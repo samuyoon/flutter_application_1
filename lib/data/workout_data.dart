@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/models/exercise.dart';
 import 'package:flutter_application_1/models/workout.dart';
@@ -15,6 +13,7 @@ class WorkoutData extends ChangeNotifier {
         weight: "10", 
         reps: "10", 
         sets: "3",
+        isCompleted: false,
         )
       ]
     ),
@@ -26,6 +25,7 @@ class WorkoutData extends ChangeNotifier {
         weight: "10", 
         reps: "10", 
         sets: "3",
+        isCompleted: false,
         )
       ]
     )
