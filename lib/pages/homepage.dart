@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/data/workout_data.dart';
+import 'package:flutter_application_1/pages/workout_page.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -15,6 +16,19 @@ class _HomePageState extends State<HomePage> {
   // text controller
   final newWorkoutNameController = TextEditingController();
 
+  //goToWorkoutPage
+  void goToWorkoutPage(String workoutName) {
+    Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (context) => WorkoutPage(
+          workoutName: workoutName,
+        ),
+        ),
+      );
+  }
+  
+  
   // create new workout
   void createNewWorkout(){
     showDialog(
@@ -39,12 +53,23 @@ class _HomePageState extends State<HomePage> {
   }
   // save workout
   void save() {
-    Provider.of<WorkoutData>(context, listen: false).addWorkout(newWorkoutNameController.text);
+    // get workout name from text controller and save in var
+    String newWorkoutName = newWorkoutNameController.text;
+    // add the workout and the workoutName property to the initialized WorkoutData object (not the class)
+    Provider.of<WorkoutData>(context, listen: false).addWorkout(newWorkoutName);
+    Navigator.pop(context);
+    clear();
   }
   
   // cancel workout
   void cancel() {
+    Navigator.pop(context);
+    clear();
+  }
 
+  // clear contents of text controller
+  void clear() {
+    newWorkoutNameController.clear();
   }
 
   @override
@@ -52,12 +77,16 @@ class _HomePageState extends State<HomePage> {
     return Consumer<WorkoutData>(
       builder: (context, value, child) => Scaffold(
         appBar: AppBar(
-          title: Text('Workout Tracker'),
+          title: const Text('Workout Tracker'),
         ),
         body: ListView.builder(
           itemCount: value.getWorkoutList().length,
           itemBuilder: (context, index) => ListTile(
             title: Text(value.getWorkoutList()[index].name),
+            trailing: IconButton(
+              icon: const Icon(Icons.arrow_forward_ios),
+              onPressed: () => goToWorkoutPage(value.getWorkoutList()[index].name),
+            ),
           ),  
         ),
         floatingActionButton: FloatingActionButton(
