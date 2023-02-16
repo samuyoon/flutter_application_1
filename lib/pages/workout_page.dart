@@ -1,145 +1,99 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/components/exercise_tile.dart';
-import 'package:provider/provider.dart';
-import '../data/workout_data.dart';
+import 'package:flutter_application_1/models/exercise_model.dart';
+import 'package:flutter_application_1/models/set_model.dart';
+import 'package:flutter_application_1/pages/homepage.dart';
+
+import '../components/exercise_card.dart';
+import '../constants.dart';
+import '../models/workout_model.dart';
 
 class WorkoutPage extends StatefulWidget {
-  const WorkoutPage({
-    super.key, 
-    required this.workoutName
-    });
-  
-  final String workoutName;
-    // text controller
-  
+  const WorkoutPage({super.key});
+
   @override
   State<WorkoutPage> createState() => _WorkoutPageState();
 }
 
-
 class _WorkoutPageState extends State<WorkoutPage> {
+  // getExerciseList -- query supabase for exercises
+  Future<List<Exercise>> _getExerciseList(workoutId) async {
+    List<Exercise> exercises = [];
+    final exerciseResponse =
+        await supabase.from('exercises').select().eq('workout_id', workoutId);
 
-  final exerciseNameTextController = TextEditingController();
-  final weightTextController = TextEditingController();
-  final repsTextController = TextEditingController();
-  final setsTextController = TextEditingController();
-
-  void createNewExercise() {
-    showDialog(
-      context: context, 
-      builder: (context) => AlertDialog(
-        title: const Text('Add Exercise'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            //exerciseName, weight, reps, sets
-            TextField(
-              controller: exerciseNameTextController,
-              decoration: const InputDecoration(
-                hintText: 'exercise name', 
-                border: InputBorder.none
-                ),
-              ),
-            TextField(
-              controller: weightTextController,
-              decoration: const InputDecoration(
-                hintText: 'weight', 
-                border: InputBorder.none,
-                ),
-              ),
-            TextField(
-              controller: repsTextController,
-              decoration: const InputDecoration(
-                hintText: 'reps',
-                border: InputBorder.none,
-                ),
-              ),
-            TextField(
-              controller: setsTextController,
-              decoration: const InputDecoration(
-                hintText: 'sets',
-                border: InputBorder.none,
-                ),
-            ),
-          ],
-        ),
-        actions: [
-          MaterialButton(
-            onPressed: save,
-            child: const Text('save'),
-            ),
-          MaterialButton(
-            onPressed: cancel,
-            child: const Text('cancel'),
-            ),
-        ],
-      )
-      );
-  }
-  void save() {
-    String exerciseName = exerciseNameTextController.text;
-    String weight = weightTextController.text;
-    String reps = repsTextController.text;
-    String sets = setsTextController.text;
-    
-    Provider.of<WorkoutData>(context, listen: false).addExercise(widget.workoutName, exerciseName, weight, reps, sets);
-    Navigator.pop(context);
-    clear();
-  }
-  
-  void cancel() {
-    Navigator.pop(context);
-    clear();
+    for (var map in exerciseResponse) {
+      exercises.add(Exercise.fromMap(map));
+    }
+    return exercises;
   }
 
-  void clear() {
-    exerciseNameTextController.clear();
-    weightTextController.clear();
-    repsTextController.clear();
-    setsTextController.clear();
+  // getSetList -- query supabase for sets
+  Future<List<Set>> _getSetList(String exerciseId) async {
+    List<Set> sets = [];
+    final setResponse =
+        await supabase.from('sets').select().eq('exercise_id', exerciseId);
+    for (var map in setResponse) {
+      sets.add(Set.fromMap(map));
+    }
+    return sets;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<WorkoutData>(
-      builder: (context, value, child) => Scaffold(
-        appBar: AppBar(
-
-          title: Text(widget.workoutName),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: createNewExercise,
-          child: const Icon(Icons.add),
-          ), 
-        body: ListView.builder(
-          itemCount: value.numberOfExercisesInWorkout(widget.workoutName),
-          itemBuilder: (context, index) => ExerciseTile(
-            exerciseName: value.getRelevantWorkout(widget.workoutName).exercises[index].name, 
-            weight: value
-                .getRelevantWorkout(widget.workoutName)
-                .exercises[index]
-                .weight, 
-            reps: value
-                .getRelevantWorkout(widget.workoutName)
-                .exercises[index]
-                .reps,
-            sets: value
-                .getRelevantWorkout(widget.workoutName)
-                .exercises[index]
-                .sets,
-            isCompleted: value
-                .getRelevantWorkout(widget.workoutName)
-                .exercises[index]
-                .isCompleted,
-            onCheckboxChange: (val) => value
-                .checkOffExercise(
-                  value.getRelevantWorkout(widget.workoutName).name, 
-                  value.getRelevantWorkout(widget.workoutName).exercises[index].name
-                ),
+    final Workout workout =
+        ModalRoute.of(context)?.settings.arguments as Workout;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(workout.workoutName),
       ),
-    )
-    )
+      body: FutureBuilder<List<Exercise>>(
+          future: _getExerciseList(workout.id),
+          builder: (context, exerciseSnapshot) {
+            if (exerciseSnapshot.hasData) {
+              return Container(
+                child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: exerciseSnapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      return Card(
+                          child: Column(
+                        children: [
+                          Text(exerciseSnapshot.data![index].exerciseName
+                              .toString()),
+
+                          // CODE BLOCK BELOW THIS LINE ALWAYS RETURNS CircularProgressIndicator()
+
+                          FutureBuilder<List<Set>>(
+                              future: _getSetList(
+                                  exerciseSnapshot.data![index].id.toString()),
+                              builder: (context, setSnapshot) {
+                                if (setSnapshot.hasData) {
+                                  ListView.builder(
+                                      itemCount: setSnapshot.data!.length,
+                                      itemBuilder: (context, index) =>
+                                          Text(setSnapshot.data![index].type));
+                                } else if (setSnapshot.hasError) {
+                                  return Text('${setSnapshot.error}');
+                                } else if (setSnapshot == null) {
+                                  return Text('snapshot was null');
+                                } else if (setSnapshot.connectionState ==
+                                    ConnectionState.values) {
+                                  return Text('connection state waiting');
+                                }
+                                return const CircularProgressIndicator();
+                              }),
+                          // CODE BLOCK ABOVE THIS LINE ALWAYS RETURNS CircularProgressIndicator()
+                        ],
+                      ));
+                    }),
+              );
+            } else if (exerciseSnapshot.hasError) {
+              return Text('${exerciseSnapshot.error}');
+            } else if (exerciseSnapshot == null) {
+              return Text('snapshot was null');
+            }
+            return const CircularProgressIndicator();
+          }),
     );
   }
 }
- 
